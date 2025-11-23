@@ -22,7 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Service
 @RequiredArgsConstructor
@@ -39,9 +43,7 @@ public class RecipeServiceImpl implements RecipeService {
         RecipeCategory category = recipeCategoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new NoSuchElementException("Categoria não encontrada"));
 
-        List<RecipeIngredient> mappedIngredients = request.getIngredients().stream()
-                .map(this::mapIngredient)
-                .toList();
+        List<RecipeIngredient> mappedIngredients = mapIngredients(request.getIngredients());
 
         Recipe recipe = Recipe.builder()
                 .name(request.getName())
@@ -58,27 +60,59 @@ public class RecipeServiceImpl implements RecipeService {
         return mapRecipeResponse(recipe);
     }
 
-    private RecipeIngredient mapIngredient(RecipeIngredientRequest req) {
+    private List<RecipeIngredient> mapIngredients(List<RecipeIngredientRequest> requests) {
 
-        Ingredient ingredient = ingredientRepository.findById(req.getIngredientId())
-                .orElseThrow(() -> new NoSuchElementException("Ingrediente não encontrado"));
+        Set<String> ingredientIds = requests.stream()
+                .map(RecipeIngredientRequest::getIngredientId)
+                .collect(Collectors.toSet());
 
-        UnitType unitUsed = unitTypeRepository.findById(req.getUnitUsedId())
-                .orElseThrow(() -> new NoSuchElementException("Unidade informada não existe"));
+        Set<String> unitIds = requests.stream()
+                .map(RecipeIngredientRequest::getUnitUsedId)
+                .collect(Collectors.toSet());
 
-        double quantityInDefaultUnit = convertToDefaultUnit(
-                ingredient,
-                unitUsed,
-                req.getQuantity()
-        );
+        Iterable<Ingredient> foundIngredientsIter = ingredientRepository.findAllById(ingredientIds);
+        List<Ingredient> foundIngredients = StreamSupport.stream(foundIngredientsIter.spliterator(), false)
+                .toList();
 
-        return RecipeIngredient.builder()
-                .ingredient(ingredient)
-                .unitUsed(unitUsed)
-                .quantity(req.getQuantity())
-                .defaultUnit(ingredient.getDefaultUnit())
-                .quantityInDefaultUnit(quantityInDefaultUnit)
-                .build();
+        Iterable<UnitType> foundUnitsIter = unitTypeRepository.findAllById(unitIds);
+        List<UnitType> foundUnits = StreamSupport.stream(foundUnitsIter.spliterator(), false)
+                .toList();
+
+        Map<String, Ingredient> ingredientMap = foundIngredients.stream()
+                .collect(Collectors.toMap(Ingredient::getId, i -> i));
+
+        Map<String, UnitType> unitMap = foundUnits.stream()
+                .collect(Collectors.toMap(UnitType::getId, u -> u));
+
+        for (String id : ingredientIds) {
+            if (!ingredientMap.containsKey(id)) {
+                throw new NoSuchElementException("Ingrediente não encontrado: " + id);
+            }
+        }
+        for (String id : unitIds) {
+            if (!unitMap.containsKey(id)) {
+                throw new NoSuchElementException("Unidade informada não existe: " + id);
+            }
+        }
+
+        return requests.stream()
+                .map(req -> {
+                    Ingredient ingredient = ingredientMap.get(req.getIngredientId());
+                    UnitType unitUsed = unitMap.get(req.getUnitUsedId());
+                    double quantityInDefaultUnit = convertToDefaultUnit(
+                            ingredient,
+                            unitUsed,
+                            req.getQuantity()
+                    );
+                    return RecipeIngredient.builder()
+                            .ingredient(ingredient)
+                            .unitUsed(unitUsed)
+                            .quantity(req.getQuantity())
+                            .defaultUnit(ingredient.getDefaultUnit())
+                            .quantityInDefaultUnit(quantityInDefaultUnit)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     private double convertToDefaultUnit(Ingredient ingredient, UnitType usedUnit, double qty) {
@@ -155,9 +189,7 @@ public class RecipeServiceImpl implements RecipeService {
         RecipeCategory category = recipeCategoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new NoSuchElementException("Categoria não encontrada"));
 
-        List<RecipeIngredient> mappedIngredients = request.getIngredients().stream()
-                .map(this::mapIngredient)
-                .toList();
+        List<RecipeIngredient> mappedIngredients = mapIngredients(request.getIngredients());
 
         recipe.setName(request.getName());
         recipe.setCategory(category);
