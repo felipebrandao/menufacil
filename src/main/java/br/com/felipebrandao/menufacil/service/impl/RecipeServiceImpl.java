@@ -43,21 +43,46 @@ public class RecipeServiceImpl implements RecipeService {
         RecipeCategory category = recipeCategoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new NoSuchElementException("Categoria não encontrada"));
 
-        List<RecipeIngredient> mappedIngredients = mapIngredients(request.getIngredients());
-
         Recipe recipe = Recipe.builder()
                 .name(request.getName())
                 .category(category)
-                .ingredients(mappedIngredients)
+                .ingredients(List.of())
                 .instructions(request.getInstructions())
                 .mainImage(request.getMainImage())
                 .gallery(request.getGallery())
                 .createdAt(Instant.now())
                 .build();
 
+        populateRecipeFromDto(recipe,
+                request.getName(),
+                category,
+                request.getIngredients(),
+                request.getInstructions(),
+                request.getMainImage(),
+                request.getGallery());
+
         recipeRepository.save(recipe);
 
         return mapRecipeResponse(recipe);
+    }
+
+    private void populateRecipeFromDto(
+            Recipe recipe,
+            String name,
+            RecipeCategory category,
+            List<RecipeIngredientRequest> ingredientRequests,
+            List<String> instructions,
+            String mainImage,
+            List<String> gallery
+    ) {
+        List<RecipeIngredient> mappedIngredients = mapIngredients(ingredientRequests);
+
+        recipe.setName(name);
+        recipe.setCategory(category);
+        recipe.setIngredients(mappedIngredients);
+        recipe.setInstructions(instructions);
+        recipe.setMainImage(mainImage);
+        recipe.setGallery(gallery);
     }
 
     private List<RecipeIngredient> mapIngredients(List<RecipeIngredientRequest> requests) {
@@ -189,14 +214,15 @@ public class RecipeServiceImpl implements RecipeService {
         RecipeCategory category = recipeCategoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new NoSuchElementException("Categoria não encontrada"));
 
-        List<RecipeIngredient> mappedIngredients = mapIngredients(request.getIngredients());
-
-        recipe.setName(request.getName());
-        recipe.setCategory(category);
-        recipe.setIngredients(mappedIngredients);
-        recipe.setInstructions(request.getInstructions());
-        recipe.setMainImage(request.getMainImage());
-        recipe.setGallery(request.getGallery());
+        populateRecipeFromDto(
+                recipe,
+                request.getName(),
+                category,
+                request.getIngredients(),
+                request.getInstructions(),
+                request.getMainImage(),
+                request.getGallery()
+        );
 
         recipeRepository.save(recipe);
 
