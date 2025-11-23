@@ -1,0 +1,18 @@
+package br.com.felipebrandao.menufacil.dto.recipe;
+
+import lombok.Builder;
+import lombok.Data;
+
+@Data
+@Builder
+public class RecipeIngredientResponse {
+
+    private String ingredientId;
+    private String ingredientName;
+
+    private String unitUsed;
+    private Double quantity;
+
+    private String defaultUnit;
+    private Double quantityInDefaultUnit;
+}
