@@ -22,7 +22,6 @@ public class CategoryIngredient {
     private String id = UUID.randomUUID().toString();
 
     @NotBlank(message = "nome é obrigatório")
-    @Indexed(unique = true)
     private String name;
 
 }

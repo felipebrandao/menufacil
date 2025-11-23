@@ -22,4 +22,8 @@ public class CreateRecipeRequest {
     private String mainImage;
 
     private List<String> gallery;
+
+    private Integer totalTime;
+
+    private Boolean highlighted;
 }

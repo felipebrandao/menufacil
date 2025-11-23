@@ -1,10 +1,13 @@
 package br.com.felipebrandao.menufacil.service.impl;
 
 import br.com.felipebrandao.menufacil.dto.recipe.CreateRecipeRequest;
+import br.com.felipebrandao.menufacil.dto.recipe.Pagination;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeCategoryResponse;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeIngredientRequest;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeIngredientResponse;
+import br.com.felipebrandao.menufacil.dto.recipe.RecipeListResponse;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeResponse;
+import br.com.felipebrandao.menufacil.dto.recipe.RecipeSummaryResponse;
 import br.com.felipebrandao.menufacil.dto.recipe.UpdateRecipeRequest;
 import br.com.felipebrandao.menufacil.model.Ingredient;
 import br.com.felipebrandao.menufacil.model.Recipe;
@@ -17,10 +20,16 @@ import br.com.felipebrandao.menufacil.repository.RecipeRepository;
 import br.com.felipebrandao.menufacil.repository.UnitTypeRepository;
 import br.com.felipebrandao.menufacil.service.RecipeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -59,7 +68,9 @@ public class RecipeServiceImpl implements RecipeService {
                 request.getIngredients(),
                 request.getInstructions(),
                 request.getMainImage(),
-                request.getGallery());
+                request.getGallery(),
+                request.getTotalTime(),
+                request.getHighlighted());
 
         recipeRepository.save(recipe);
 
@@ -73,7 +84,9 @@ public class RecipeServiceImpl implements RecipeService {
             List<RecipeIngredientRequest> ingredientRequests,
             List<String> instructions,
             String mainImage,
-            List<String> gallery
+            List<String> gallery,
+            Integer totalTime,
+            Boolean highlighted
     ) {
         List<RecipeIngredient> mappedIngredients = mapIngredients(ingredientRequests);
 
@@ -83,6 +96,9 @@ public class RecipeServiceImpl implements RecipeService {
         recipe.setInstructions(instructions);
         recipe.setMainImage(mainImage);
         recipe.setGallery(gallery);
+        recipe.setTotalTime(totalTime);
+        recipe.setHighlighted(highlighted != null ? highlighted : false);
+        recipe.setUpdatedAt(Instant.now());
     }
 
     private List<RecipeIngredient> mapIngredients(List<RecipeIngredientRequest> requests) {
@@ -201,7 +217,10 @@ public class RecipeServiceImpl implements RecipeService {
                 .instructions(recipe.getInstructions())
                 .mainImage(recipe.getMainImage())
                 .gallery(recipe.getGallery())
+                .totalTime(recipe.getTotalTime())
+                .highlighted(recipe.getHighlighted())
                 .createdAt(recipe.getCreatedAt())
+                .updatedAt(recipe.getUpdatedAt())
                 .build();
     }
 
@@ -221,12 +240,70 @@ public class RecipeServiceImpl implements RecipeService {
                 request.getIngredients(),
                 request.getInstructions(),
                 request.getMainImage(),
-                request.getGallery()
+                request.getGallery(),
+                request.getTotalTime(),
+                request.getHighlighted()
         );
 
         recipeRepository.save(recipe);
 
         return mapRecipeResponse(recipe);
+    }
+
+    @Override
+    public RecipeListResponse listRecipes(String query, String category, int page, int limit) {
+        Pageable pageable = PageRequest.of(page - 1, limit, Sort.by("createdAt").descending());
+
+        boolean hasQuery = query != null && !query.isBlank();
+        boolean hasCategory = category != null && !category.isBlank();
+
+        Page<Recipe> result;
+
+        if (hasQuery || hasCategory) {
+            result = recipeRepository.search(
+                    hasQuery ? query : "",
+                    hasCategory ? category : "",
+                    pageable
+            );
+        } else {
+            result = recipeRepository.findAll(pageable);
+        }
+
+        List<RecipeSummaryResponse> list = result
+                .getContent()
+                .stream()
+                .map(this::toSummary)
+                .toList();
+
+        RecipeListResponse response = new RecipeListResponse();
+        response.setRecipes(list);
+
+        Pagination pagination = new Pagination();
+        pagination.setPage(page);
+        pagination.setLimit(limit);
+        pagination.setTotal(result.getTotalElements());
+        pagination.setTotalPages(result.getTotalPages());
+        response.setPagination(pagination);
+
+        return response;
+    }
+
+    private RecipeSummaryResponse toSummary(Recipe r) {
+        RecipeSummaryResponse dto = new RecipeSummaryResponse();
+        dto.setId(r.getId());
+        dto.setName(r.getName());
+        dto.setCategory(r.getCategory().getName());
+        dto.setMainImage(r.getMainImage());
+        dto.setRating(0.0);
+        dto.setTotalTime(r.getTotalTime());
+        dto.setHighlighted(r.getHighlighted());
+
+        LocalDateTime createdAt = r.getCreatedAt()
+                .atZone(ZoneOffset.UTC)
+                .toLocalDateTime();
+
+        dto.setCreatedAt(createdAt);
+        return dto;
     }
 
 }

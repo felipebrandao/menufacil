@@ -40,6 +40,13 @@ public class Recipe {
 
     private List<String> gallery;
 
+    private Integer totalTime;
+
+    @Builder.Default
+    private Boolean highlighted = false;
+
     @CreatedDate
     private Instant createdAt;
+
+    private Instant updatedAt;
 }

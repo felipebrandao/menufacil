@@ -1,6 +1,7 @@
 package br.com.felipebrandao.menufacil.controller;
 
 import br.com.felipebrandao.menufacil.dto.recipe.CreateRecipeRequest;
+import br.com.felipebrandao.menufacil.dto.recipe.RecipeListResponse;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeResponse;
 import br.com.felipebrandao.menufacil.dto.recipe.UpdateRecipeRequest;
 import br.com.felipebrandao.menufacil.service.RecipeService;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -33,8 +35,14 @@ public class RecipeController {
     }
 
     @GetMapping
-    public List<RecipeResponse> listAll() {
-        return recipeService.listAll();
+    public ResponseEntity<RecipeListResponse> list(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "8") int limit
+    ) {
+        RecipeListResponse response = recipeService.listRecipes(query, category, page, limit);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

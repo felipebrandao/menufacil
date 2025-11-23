@@ -24,5 +24,11 @@ public class RecipeResponse {
 
     private List<String> gallery;
 
+    private Integer totalTime;
+
+    private Boolean highlighted;
+
     private Instant createdAt;
+
+    private Instant updatedAt;
 }
