@@ -12,4 +12,5 @@ public interface IngredientService {
     Optional<Ingredient> update(String id, Ingredient ingredient);
     boolean delete(String id);
     List<Ingredient> autocomplete(String query, int limit);
+    Optional<Ingredient> getById(String id);
 }

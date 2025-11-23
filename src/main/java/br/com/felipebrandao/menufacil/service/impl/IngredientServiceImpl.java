@@ -8,7 +8,6 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,7 +70,8 @@ public class IngredientServiceImpl implements IngredientService {
                     }
                     ingredient.setId(id);
                     try {
-                        return repository.save(ingredient);
+                        var saved = repository.save(ingredient);
+                        return repository.findById(saved.getId()).orElse(saved);
                     } catch (DuplicateKeyException e) {
                         throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
                     }
@@ -92,5 +92,10 @@ public class IngredientServiceImpl implements IngredientService {
         var ingredients = repository.findByNameContainingIgnoreCase(query == null ? "" : query, page);
 
         return ingredients;
+    }
+
+    @Override
+    public Optional<Ingredient> getById(String id) {
+        return repository.findById(id);
     }
 }

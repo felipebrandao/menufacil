@@ -42,7 +42,7 @@ public class IngredientController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Ingredient> update(@PathVariable String id, @RequestBody Ingredient ingredient) {
+    public ResponseEntity<Ingredient> update(@PathVariable String id, @Valid @RequestBody Ingredient ingredient) {
         return ingredientService.update(id, ingredient)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -59,5 +59,12 @@ public class IngredientController {
             @RequestParam String query,
             @RequestParam(defaultValue = "10") int limit) {
         return ingredientService.autocomplete(query, limit);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Ingredient> getById(@PathVariable String id) {
+        return ingredientService.getById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
