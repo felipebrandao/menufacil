@@ -12,8 +12,6 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 @Builder
 public class UnitConversion {
 
-    @DBRef
     private UnitType toUnit;
-
     private Double factor;
 }

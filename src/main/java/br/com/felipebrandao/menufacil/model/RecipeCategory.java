@@ -1,5 +1,6 @@
 package br.com.felipebrandao.menufacil.model;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,9 +15,11 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Category {
+public class RecipeCategory {
 
     @Id
     private String id = UUID.randomUUID().toString();
+
+    @NotBlank(message = "nome é obrigatório")
     private String name;
 }
