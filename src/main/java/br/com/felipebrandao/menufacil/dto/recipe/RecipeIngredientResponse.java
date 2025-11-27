@@ -10,7 +10,9 @@ public class RecipeIngredientResponse {
     private String ingredientId;
     private String ingredientName;
 
-    private String unitUsed;
+    private String unitUsedId;
+    private String unitUsedName;
+    private String unitUsedAbbreviation;
     private Double quantity;
 
     private String defaultUnit;
