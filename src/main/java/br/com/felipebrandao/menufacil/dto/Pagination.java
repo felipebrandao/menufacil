@@ -1,4 +1,4 @@
-package br.com.felipebrandao.menufacil.dto.recipe;
+package br.com.felipebrandao.menufacil.dto;
 
 import lombok.Data;
 
