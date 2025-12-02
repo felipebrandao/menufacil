@@ -1,7 +1,7 @@
 package br.com.felipebrandao.menufacil.service.impl;
 
+import br.com.felipebrandao.menufacil.dto.Pagination;
 import br.com.felipebrandao.menufacil.dto.recipe.CreateRecipeRequest;
-import br.com.felipebrandao.menufacil.dto.recipe.Pagination;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeCategoryResponse;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeIngredientRequest;
 import br.com.felipebrandao.menufacil.dto.recipe.RecipeIngredientResponse;
@@ -28,8 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -299,12 +297,7 @@ public class RecipeServiceImpl implements RecipeService {
         dto.setRating(0.0);
         dto.setTotalTime(r.getTotalTime());
         dto.setHighlighted(r.getHighlighted());
-
-        LocalDateTime createdAt = r.getCreatedAt()
-                .atZone(ZoneOffset.UTC)
-                .toLocalDateTime();
-
-        dto.setCreatedAt(createdAt);
+        dto.setCreatedAt(r.getCreatedAt());
         return dto;
     }
 

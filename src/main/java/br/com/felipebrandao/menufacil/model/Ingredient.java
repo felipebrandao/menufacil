@@ -14,7 +14,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Document(collection = "ingredients")
 @Data
@@ -24,7 +23,7 @@ import java.util.UUID;
 public class Ingredient {
 
     @Id
-    private String id = UUID.randomUUID().toString();
+    private String id;
 
     @NotBlank(message = "nome é obrigatório")
     private String name;

@@ -18,7 +18,7 @@ import java.util.UUID;
 public class RecipeCategory {
 
     @Id
-    private String id = UUID.randomUUID().toString();
+    private String id;
 
     @NotBlank(message = "nome é obrigatório")
     private String name;

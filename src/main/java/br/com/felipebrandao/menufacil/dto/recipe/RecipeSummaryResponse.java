@@ -2,7 +2,7 @@ package br.com.felipebrandao.menufacil.dto.recipe;
 
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 public class RecipeSummaryResponse {
@@ -13,5 +13,5 @@ public class RecipeSummaryResponse {
     private Double rating;
     private Integer totalTime;
     private Boolean highlighted;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

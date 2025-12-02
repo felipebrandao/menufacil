@@ -1,7 +1,11 @@
 package br.com.felipebrandao.menufacil.service.impl;
 
+import br.com.felipebrandao.menufacil.dto.ingredient.IngredientRequest;
 import br.com.felipebrandao.menufacil.model.Ingredient;
+import br.com.felipebrandao.menufacil.model.UnitConversion;
+import br.com.felipebrandao.menufacil.repository.CategoryIngredientRepository;
 import br.com.felipebrandao.menufacil.repository.IngredientRepository;
+import br.com.felipebrandao.menufacil.repository.UnitTypeRepository;
 import br.com.felipebrandao.menufacil.service.IngredientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -16,6 +20,8 @@ import java.util.Optional;
 public class IngredientServiceImpl implements IngredientService {
 
     private final IngredientRepository repository;
+    private final CategoryIngredientRepository categoryIngredientRepository;
+    private final UnitTypeRepository unitTypeRepository;
 
     @Override
     public List<Ingredient> list() {
@@ -42,10 +48,31 @@ public class IngredientServiceImpl implements IngredientService {
     }
 
     @Override
-    public Ingredient create(Ingredient ingredient) {
-        var catId = ingredient.getCategory() != null ? ingredient.getCategory().getId() : null;
-        if (catId != null && repository.existsByNameAndCategoryId(ingredient.getName(), catId)) {
+    public Ingredient create(IngredientRequest ingredientRequest) {
+
+        if (repository.existsByNameAndCategoryId(ingredientRequest.getName(), ingredientRequest.getCategory())) {
             throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
+        }
+
+        var category = categoryIngredientRepository.findById(ingredientRequest.getCategory()).
+                orElseThrow(
+                        () -> new IllegalArgumentException("Categoria não encontrada: " + ingredientRequest.getCategory())
+                );
+
+        var defaultUnit = unitTypeRepository.findById(ingredientRequest.getDefaultUnit())
+                .orElseThrow(() -> new IllegalArgumentException("Unidade padrão não encontrada: " + ingredientRequest.getDefaultUnit()));
+
+        var ingredient = new Ingredient();
+        ingredient.setName(ingredientRequest.getName());
+        ingredient.setCategory(category);
+        ingredient.setDefaultUnit(defaultUnit);
+        if (ingredientRequest.getConversions() != null) {
+            var conversions = ingredientRequest.getConversions().stream().map(c -> {
+                var unit = unitTypeRepository.findById(c.getToUnit())
+                        .orElseThrow(() -> new IllegalArgumentException("Unidade não encontrada: " + c.getToUnit()));
+                return new UnitConversion(unit, c.getFactor());
+            }).toList();
+            ingredient.setConversions(conversions);
         }
         try {
             var saved = repository.save(ingredient);
@@ -55,27 +82,53 @@ public class IngredientServiceImpl implements IngredientService {
         }
     }
 
+
     @Override
-    public Optional<Ingredient> update(String id, Ingredient ingredient) {
-        return repository.findById(id)
-                .map(existing -> {
-                    var catId = ingredient.getCategory() != null ? ingredient.getCategory().getId() : null;
-                    if (catId != null) {
-                        repository.findByNameAndCategoryId(ingredient.getName(), catId)
-                                .ifPresent(conflict -> {
-                                    if (!conflict.getId().equals(id)) {
-                                        throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
-                                    }
-                                });
-                    }
-                    ingredient.setId(id);
-                    try {
-                        var saved = repository.save(ingredient);
-                        return repository.findById(saved.getId()).orElse(saved);
-                    } catch (DuplicateKeyException e) {
-                        throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
-                    }
-                });
+    public Ingredient update(String id, IngredientRequest ingredientRequest) {
+
+        var ingredient = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ingrediente não encontrado: " + id));
+
+        if (repository.existsByNameAndCategoryIdAndIdNot(
+                ingredientRequest.getName(),
+                ingredientRequest.getCategory(),
+                id)
+        ) {
+            throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
+        }
+
+        var category = categoryIngredientRepository.findById(ingredientRequest.getCategory())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Categoria não encontrada: " + ingredientRequest.getCategory())
+                );
+        ingredient.setCategory(category);
+
+        var defaultUnit = unitTypeRepository.findById(ingredientRequest.getDefaultUnit())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Unidade padrão não encontrada: " + ingredientRequest.getDefaultUnit())
+                );
+        ingredient.setDefaultUnit(defaultUnit);
+
+        ingredient.setName(ingredientRequest.getName());
+
+        if (ingredientRequest.getConversions() != null) {
+            var conversions = ingredientRequest.getConversions()
+                    .stream()
+                    .map(c -> {
+                        var unit = unitTypeRepository.findById(c.getToUnit())
+                                .orElseThrow(() ->
+                                        new IllegalArgumentException("Unidade não encontrada: " + c.getToUnit())
+                                );
+                        return new UnitConversion(unit, c.getFactor());
+                    })
+                    .toList();
+
+            ingredient.setConversions(conversions);
+        } else {
+            ingredient.setConversions(List.of());
+        }
+
+        return repository.save(ingredient);
     }
 
     @Override

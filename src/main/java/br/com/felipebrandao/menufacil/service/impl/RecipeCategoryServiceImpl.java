@@ -45,7 +45,7 @@ public class RecipeCategoryServiceImpl implements RecipeCategoryService {
 
     @Override
     public boolean delete(String id) {
-        if(recipeCategoryRepository.existsById(id)) return false;
+        if(!recipeCategoryRepository.existsById(id)) return false;
         recipeCategoryRepository.deleteById(id);
         return true;
     }

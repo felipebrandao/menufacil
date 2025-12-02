@@ -6,10 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-
-import java.util.UUID;
 
 @Document(collection = "categories_ingredient")
 @Data
@@ -19,7 +16,7 @@ import java.util.UUID;
 public class CategoryIngredient {
 
     @Id
-    private String id = UUID.randomUUID().toString();
+    private String id;
 
     @NotBlank(message = "nome é obrigatório")
     private String name;

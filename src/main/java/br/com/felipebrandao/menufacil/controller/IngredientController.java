@@ -1,5 +1,6 @@
 package br.com.felipebrandao.menufacil.controller;
 
+import br.com.felipebrandao.menufacil.dto.ingredient.IngredientRequest;
 import br.com.felipebrandao.menufacil.model.Ingredient;
 import br.com.felipebrandao.menufacil.service.IngredientService;
 import jakarta.validation.Valid;
@@ -37,15 +38,13 @@ public class IngredientController {
     }
 
     @PostMapping
-    public ResponseEntity<Ingredient> create(@Valid @RequestBody Ingredient ingredient) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ingredientService.create(ingredient));
+    public ResponseEntity<Ingredient> create(@Valid @RequestBody IngredientRequest ingredientRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ingredientService.create(ingredientRequest));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Ingredient> update(@PathVariable String id, @Valid @RequestBody Ingredient ingredient) {
-        return ingredientService.update(id, ingredient)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<Ingredient> update(@PathVariable String id, @Valid @RequestBody IngredientRequest ingredientRequest) {
+        return ResponseEntity.ok(ingredientService.update(id, ingredientRequest));
     }
 
     @DeleteMapping("/{id}")

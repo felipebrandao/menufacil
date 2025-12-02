@@ -23,7 +23,7 @@ import java.util.UUID;
 public class Recipe {
 
     @Id
-    private String id = UUID.randomUUID().toString();
+    private String id;
 
     @NotBlank
     private String name;
