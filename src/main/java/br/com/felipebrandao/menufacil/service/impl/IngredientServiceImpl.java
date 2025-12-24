@@ -12,6 +12,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,10 +55,8 @@ public class IngredientServiceImpl implements IngredientService {
             throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
         }
 
-        var category = categoryIngredientRepository.findById(ingredientRequest.getCategory()).
-                orElseThrow(
-                        () -> new IllegalArgumentException("Categoria não encontrada: " + ingredientRequest.getCategory())
-                );
+        var category = categoryIngredientRepository.findById(ingredientRequest.getCategory())
+                .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada: " + ingredientRequest.getCategory()));
 
         var defaultUnit = unitTypeRepository.findById(ingredientRequest.getDefaultUnit())
                 .orElseThrow(() -> new IllegalArgumentException("Unidade padrão não encontrada: " + ingredientRequest.getDefaultUnit()));
@@ -66,14 +65,23 @@ public class IngredientServiceImpl implements IngredientService {
         ingredient.setName(ingredientRequest.getName());
         ingredient.setCategory(category);
         ingredient.setDefaultUnit(defaultUnit);
+
+        var conversions = new ArrayList<UnitConversion>();
+        conversions.add(new UnitConversion(defaultUnit, 1.0));
+
         if (ingredientRequest.getConversions() != null) {
-            var conversions = ingredientRequest.getConversions().stream().map(c -> {
-                var unit = unitTypeRepository.findById(c.getToUnit())
-                        .orElseThrow(() -> new IllegalArgumentException("Unidade não encontrada: " + c.getToUnit()));
-                return new UnitConversion(unit, c.getFactor());
-            }).toList();
-            ingredient.setConversions(conversions);
+            var additionalConversions = ingredientRequest.getConversions().stream()
+                    .filter(c -> !c.getToUnit().equals(ingredientRequest.getDefaultUnit())) // Evita duplicação
+                    .map(c -> {
+                        var unit = unitTypeRepository.findById(c.getToUnit())
+                                .orElseThrow(() -> new IllegalArgumentException("Unidade não encontrada: " + c.getToUnit()));
+                        return new UnitConversion(unit, c.getFactor());
+                    }).toList();
+            conversions.addAll(additionalConversions);
         }
+
+        ingredient.setConversions(conversions);
+
         try {
             var saved = repository.save(ingredient);
             return repository.findById(saved.getId()).orElse(saved);
@@ -81,7 +89,6 @@ public class IngredientServiceImpl implements IngredientService {
             throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
         }
     }
-
 
     @Override
     public Ingredient update(String id, IngredientRequest ingredientRequest) {
@@ -92,44 +99,41 @@ public class IngredientServiceImpl implements IngredientService {
         if (repository.existsByNameAndCategoryIdAndIdNot(
                 ingredientRequest.getName(),
                 ingredientRequest.getCategory(),
-                id)
-        ) {
+                id)) {
             throw new IllegalArgumentException("Ingrediente com esse nome já existe na categoria");
         }
 
         var category = categoryIngredientRepository.findById(ingredientRequest.getCategory())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Categoria não encontrada: " + ingredientRequest.getCategory())
-                );
+                .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada: " + ingredientRequest.getCategory()));
         ingredient.setCategory(category);
 
         var defaultUnit = unitTypeRepository.findById(ingredientRequest.getDefaultUnit())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Unidade padrão não encontrada: " + ingredientRequest.getDefaultUnit())
-                );
+                .orElseThrow(() -> new IllegalArgumentException("Unidade padrão não encontrada: " + ingredientRequest.getDefaultUnit()));
         ingredient.setDefaultUnit(defaultUnit);
 
         ingredient.setName(ingredientRequest.getName());
 
+        var conversions = new ArrayList<UnitConversion>();
+        conversions.add(new UnitConversion(defaultUnit, 1.0));
+
         if (ingredientRequest.getConversions() != null) {
-            var conversions = ingredientRequest.getConversions()
+            var additionalConversions = ingredientRequest.getConversions()
                     .stream()
+                    .filter(c -> !c.getToUnit().equals(ingredientRequest.getDefaultUnit())) // Evita duplicação
                     .map(c -> {
                         var unit = unitTypeRepository.findById(c.getToUnit())
-                                .orElseThrow(() ->
-                                        new IllegalArgumentException("Unidade não encontrada: " + c.getToUnit())
-                                );
+                                .orElseThrow(() -> new IllegalArgumentException("Unidade não encontrada: " + c.getToUnit()));
                         return new UnitConversion(unit, c.getFactor());
                     })
                     .toList();
-
-            ingredient.setConversions(conversions);
-        } else {
-            ingredient.setConversions(List.of());
+            conversions.addAll(additionalConversions);
         }
+
+        ingredient.setConversions(conversions);
 
         return repository.save(ingredient);
     }
+
 
     @Override
     public boolean delete(String id) {
