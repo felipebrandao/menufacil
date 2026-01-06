@@ -131,7 +131,6 @@ public class ScheduleServiceImpl  implements ScheduleService {
                     return d;
                 });
 
-        // valida existencia da receita
         Recipe recipe = recipeRepository.findById(req.getRecipeId())
                 .orElseThrow(() -> new NoSuchElementException("Receita não encontrada"));
 
