@@ -65,12 +65,9 @@ public class ScheduleController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{date}/recipes/{id}")
-    public ResponseEntity<Void> delete(
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @PathVariable String id
-    ) {
-        scheduleService.deleteRecipe(date, id);
+    @DeleteMapping("/scheduled/{scheduledId}")
+    public ResponseEntity<Void> deleteScheduled(@PathVariable String scheduledId) {
+        scheduleService.deleteScheduledRecipe(scheduledId);
         return ResponseEntity.noContent().build();
     }
 }

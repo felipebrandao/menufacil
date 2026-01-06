@@ -174,19 +174,26 @@ public class ScheduleServiceImpl  implements ScheduleService {
 
     @Transactional
     @Override
-    public void deleteRecipe(LocalDate date, String scheduledId) {
-        ScheduleDay day = scheduleRepository.findByDate(date)
-                .orElseThrow(() -> new NoSuchElementException("Dia não encontrado"));
+    public void deleteScheduledRecipe(String scheduledId) {
+        List<ScheduleDay> allDays = scheduleRepository.findAll();
+
+        ScheduleDay day = allDays.stream()
+                .filter(d -> d.getRecipes().stream()
+                        .anyMatch(r -> r.getId().equals(scheduledId)))
+                .findFirst()
+                .orElseThrow(() -> new NoSuchElementException("Agendamento não encontrado"));
 
         boolean removed = day.getRecipes().removeIf(r -> r.getId().equals(scheduledId));
         if (!removed) throw new NoSuchElementException("Agendamento não encontrado");
-        // reindex orders
+
         List<ScheduledRecipe> sorted = day.getRecipes().stream()
                 .sorted(Comparator.comparingInt(ScheduledRecipe::getOrder))
-                .collect(Collectors.toList());
+                .toList();
+
         for (int i = 0; i < sorted.size(); i++) {
             sorted.get(i).setOrder(i + 1);
         }
+
         day.setUpdatedAt(Instant.now());
         scheduleRepository.save(day);
     }

@@ -13,5 +13,5 @@ public interface ScheduleService {
     DayResponse getByDate(LocalDate date);
     ScheduledRecipeResponse addRecipe(LocalDate date, CreateScheduleRecipeRequest req);
     void reorder(LocalDate date, ReorderRequest req);
-    void deleteRecipe(LocalDate date, String scheduledId);
+    void deleteScheduledRecipe(String scheduledId);
 }
