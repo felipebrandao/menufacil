@@ -1,5 +1,6 @@
 package br.com.felipebrandao.menufacil.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.info.Info;
 import org.springframework.boot.actuate.info.InfoContributor;
 import org.springframework.boot.info.BuildProperties;
@@ -8,12 +9,12 @@ import org.springframework.stereotype.Component;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@Component
+@Component("customBuildInfoContributor")
 public class BuildInfoContributor implements InfoContributor {
 
     private final BuildProperties buildProperties;
 
-    public BuildInfoContributor(BuildProperties buildProperties) {
+    public BuildInfoContributor(@Autowired(required = false) BuildProperties buildProperties) {
         this.buildProperties = buildProperties;
     }
 
@@ -25,6 +26,9 @@ public class BuildInfoContributor implements InfoContributor {
             app.put("name", buildProperties.getName());
             app.put("version", buildProperties.getVersion());
             app.put("time", buildProperties.getTime());
+        } else {
+            app.put("name", System.getProperty("spring.application.name", "menufacil"));
+            app.put("version", "dev");
         }
 
         builder.withDetail("app", app);
@@ -35,4 +39,3 @@ public class BuildInfoContributor implements InfoContributor {
         builder.withDetail("runtime", runtime);
     }
 }
-
