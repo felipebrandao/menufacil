@@ -141,5 +141,6 @@ Retorna uma lista consolidada a partir do que estiver agendado no período.
   - conversões (`UnitConversion`) para transformar quantidade usada (unidade selecionada) em quantidade na unidade padrão
 - Receitas calculam/armazenam `quantityInDefaultUnit` para facilitar consolidação em lista de compras.
 - A lista de compras consolida ingredientes por categoria e por ingrediente, somando quantidades na unidade padrão.
-
+- A agenda permite agendar múltiplas receitas por dia, com ordenação.
+- A lista de compras é gerada a partir do que está agendado na agenda,
 
