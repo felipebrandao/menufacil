@@ -26,6 +26,12 @@ public class ShoppingListController {
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month
     ) {
-        return ResponseEntity.ok(shoppingListService.generate(view, start, year, month));
+        ShoppingListResponse resp = shoppingListService.generate(view, start, year, month);
+
+        if (resp.getCategories() == null || resp.getCategories().isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(resp);
     }
 }
