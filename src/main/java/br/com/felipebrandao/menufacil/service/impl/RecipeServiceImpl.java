@@ -27,7 +27,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -57,7 +56,6 @@ public class RecipeServiceImpl implements RecipeService {
                 .instructions(request.getInstructions())
                 .mainImage(request.getMainImage())
                 .gallery(request.getGallery())
-                .createdAt(Instant.now())
                 .build();
 
         populateRecipeFromDto(recipe,
@@ -96,7 +94,6 @@ public class RecipeServiceImpl implements RecipeService {
         recipe.setGallery(gallery);
         recipe.setTotalTime(totalTime);
         recipe.setHighlighted(highlighted != null ? highlighted : false);
-        recipe.setUpdatedAt(Instant.now());
     }
 
     private List<RecipeIngredient> mapIngredients(List<RecipeIngredientRequest> requests) {

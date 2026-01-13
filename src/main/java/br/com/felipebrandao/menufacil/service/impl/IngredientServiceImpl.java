@@ -20,6 +20,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class IngredientServiceImpl implements IngredientService {
 
+    private static final int MAX_LIMIT = 100;
+
     private final IngredientRepository repository;
     private final CategoryIngredientRepository categoryIngredientRepository;
     private final UnitTypeRepository unitTypeRepository;
@@ -31,7 +33,7 @@ public class IngredientServiceImpl implements IngredientService {
 
     @Override
     public List<Ingredient> search(String query, int limit, String categoryId) {
-        int safeLimit = Math.max(1, limit);
+        int safeLimit = Math.clamp(limit, 1, MAX_LIMIT);
         PageRequest page = PageRequest.of(0, safeLimit);
         if (query == null || query.isBlank()) {
             if (categoryId != null && !categoryId.isBlank()) {
@@ -144,11 +146,9 @@ public class IngredientServiceImpl implements IngredientService {
 
     @Override
     public List<Ingredient> autocomplete(String query, int limit) {
-        int safeLimit = Math.max(1, limit);
+        int safeLimit = Math.clamp(limit, 1, MAX_LIMIT);
         var page = PageRequest.of(0, safeLimit);
-        var ingredients = repository.findByNameContainingIgnoreCase(query == null ? "" : query, page);
-
-        return ingredients;
+        return repository.findByNameContainingIgnoreCase(query == null ? "" : query, page);
     }
 
     @Override
