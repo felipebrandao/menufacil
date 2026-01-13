@@ -38,7 +38,7 @@ public class RestExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         ApiErrorResponse body = ApiErrorResponse.builder()
                 .code("VALIDATION_ERROR")
-                .message("Campos inv\u00e1lidos")
+                .message("Campos inválidos")
                 .status(HttpStatus.BAD_REQUEST.value())
                 .path(request.getRequestURI())
                 .timestamp(Instant.now())
