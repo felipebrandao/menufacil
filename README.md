@@ -27,6 +27,23 @@ Defina as variáveis de ambiente:
 - `MONGODB_URI` (**obrigatória**) — URI do MongoDB
 - `PORT` (opcional) — porta da aplicação (padrão: `8080`)
 
+### Observabilidade (Actuator)
+
+O projeto usa **Spring Boot Actuator**. Por padrão, expõe apenas:
+
+- `GET /actuator/health`
+- `GET /actuator/info`
+- `GET /actuator/metrics`
+
+> Observação: detalhes do `health` podem depender de configuração de segurança (`management.endpoint.health.show-details`).
+
+### Lombok (importante no IntelliJ)
+
+O projeto usa **Lombok**. Para evitar erros de compilação/IDE (getters/setters/builder “sumindo”):
+
+- Instale/habilite o plugin do Lombok no IntelliJ
+- Habilite: `Settings > Build, Execution, Deployment > Compiler > Annotation Processors > Enable annotation processing`
+
 ### Executar (Maven Wrapper)
 
 No Windows:
@@ -143,4 +160,3 @@ Retorna uma lista consolidada a partir do que estiver agendado no período.
 - A lista de compras consolida ingredientes por categoria e por ingrediente, somando quantidades na unidade padrão.
 - A agenda permite agendar múltiplas receitas por dia, com ordenação.
 - A lista de compras é gerada a partir do que está agendado na agenda,
-
