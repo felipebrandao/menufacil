@@ -13,9 +13,6 @@ public class ShoppingListResponse {
     private LocalDate start;
     private LocalDate end;
 
-    /**
-     * Categorias (ex.: Frutas, Carnes, etc.) com os itens consolidados e somados.
-     */
+    private List<ShoppingListRecipeResponse> recipes = new ArrayList<>();
     private List<ShoppingListCategoryResponse> categories = new ArrayList<>();
 }
-

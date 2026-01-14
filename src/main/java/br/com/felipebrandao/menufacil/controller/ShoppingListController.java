@@ -1,7 +1,7 @@
 package br.com.felipebrandao.menufacil.controller;
 
 import br.com.felipebrandao.menufacil.dto.shopping.ShoppingListResponse;
-import br.com.felipebrandao.menufacil.service.impl.ShoppingListServiceImpl;
+import br.com.felipebrandao.menufacil.service.ShoppingListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class ShoppingListController {
 
-    private final ShoppingListServiceImpl shoppingListService;
+    private final ShoppingListService shoppingListService;
 
     @GetMapping
     public ResponseEntity<ShoppingListResponse> generate(

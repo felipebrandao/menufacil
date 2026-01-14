@@ -2,6 +2,7 @@ package br.com.felipebrandao.menufacil.service.impl;
 
 import br.com.felipebrandao.menufacil.dto.shopping.ShoppingListCategoryResponse;
 import br.com.felipebrandao.menufacil.dto.shopping.ShoppingListItemResponse;
+import br.com.felipebrandao.menufacil.dto.shopping.ShoppingListRecipeResponse;
 import br.com.felipebrandao.menufacil.dto.shopping.ShoppingListResponse;
 import br.com.felipebrandao.menufacil.model.CategoryIngredient;
 import br.com.felipebrandao.menufacil.model.Ingredient;
@@ -13,10 +14,11 @@ import br.com.felipebrandao.menufacil.model.UnitType;
 import br.com.felipebrandao.menufacil.repository.RecipeRepository;
 import br.com.felipebrandao.menufacil.repository.ScheduleRepository;
 import br.com.felipebrandao.menufacil.service.ShoppingListService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Collections;
@@ -30,18 +32,32 @@ import java.util.stream.Collectors;
 
 @Service
 @Primary
-@RequiredArgsConstructor
 public class ShoppingListServiceImpl implements ShoppingListService {
 
     private final ScheduleRepository scheduleRepository;
     private final RecipeRepository recipeRepository;
+    private final Clock clock;
+
+    @Autowired
+    public ShoppingListServiceImpl(ScheduleRepository scheduleRepository, RecipeRepository recipeRepository, Clock clock) {
+        this.scheduleRepository = scheduleRepository;
+        this.recipeRepository = recipeRepository;
+        this.clock = clock;
+    }
 
     @Override
     public ShoppingListResponse generate(String view, LocalDate start, Integer year, Integer month) {
-        DateRange range = resolveRange(view, start, year, month);
+        DateRange requestedRange = resolveRange(view, start, year, month);
 
-        List<ScheduleDay> days = scheduleRepository.findByDateRange(range.start(), range.end());
-        Set<String> recipeIds = extractRecipeIds(days);
+        LocalDate today = LocalDate.now(clock);
+        LocalDate effectiveStart = requestedRange.start().isBefore(today) ? today : requestedRange.start();
+
+        List<ScheduleDay> days = effectiveStart.isAfter(requestedRange.end())
+                ? Collections.emptyList()
+                : scheduleRepository.findByDateRange(effectiveStart, requestedRange.end());
+
+        Map<String, Integer> recipeOccurrences = extractRecipeOccurrences(days);
+        Set<String> recipeIds = recipeOccurrences.keySet();
 
         List<Recipe> recipes = recipeIds.isEmpty()
                 ? Collections.emptyList()
@@ -52,8 +68,9 @@ public class ShoppingListServiceImpl implements ShoppingListService {
 
         ShoppingListResponse resp = new ShoppingListResponse();
         resp.setView(view);
-        resp.setStart(range.start());
-        resp.setEnd(range.end());
+        resp.setStart(requestedRange.start());
+        resp.setEnd(requestedRange.end());
+        resp.setRecipes(toRecipeResponses(recipes, recipeOccurrences));
         resp.setCategories(categories);
         return resp;
     }
@@ -73,13 +90,37 @@ public class ShoppingListServiceImpl implements ShoppingListService {
         return new DateRange(ym.atDay(1), ym.atEndOfMonth());
     }
 
-    private Set<String> extractRecipeIds(List<ScheduleDay> days) {
-        return days.stream()
+    private Map<String, Integer> extractRecipeOccurrences(List<ScheduleDay> days) {
+        Map<String, Integer> occurrences = new HashMap<>();
+
+        for (ScheduleDay day : days) {
+            if (day == null || day.getRecipes() == null) continue;
+
+            for (ScheduledRecipe sr : day.getRecipes()) {
+                if (sr == null || sr.getRecipeId() == null) continue;
+                occurrences.merge(sr.getRecipeId(), 1, Integer::sum);
+            }
+        }
+
+        return occurrences;
+    }
+
+    private List<ShoppingListRecipeResponse> toRecipeResponses(List<Recipe> recipes, Map<String, Integer> occurrencesByRecipeId) {
+        if (recipes == null || recipes.isEmpty()) return Collections.emptyList();
+
+        return recipes.stream()
                 .filter(Objects::nonNull)
-                .flatMap(d -> d.getRecipes() == null ? java.util.stream.Stream.empty() : d.getRecipes().stream())
-                .map(ScheduledRecipe::getRecipeId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+                .map(r -> {
+                    ShoppingListRecipeResponse rr = new ShoppingListRecipeResponse();
+                    rr.setRecipeId(r.getId());
+                    rr.setRecipeName(r.getName());
+                    rr.setOccurrences(occurrencesByRecipeId.getOrDefault(r.getId(), 0));
+                    return rr;
+                })
+                .sorted(Comparator
+                        .comparing(ShoppingListRecipeResponse::getOccurrences, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(r -> r.getRecipeName() == null ? "" : r.getRecipeName(), String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     private Aggregation aggregateInDefaultUnit(List<Recipe> recipes) {
@@ -104,10 +145,6 @@ public class ShoppingListServiceImpl implements ShoppingListService {
         return new Aggregation(categoryById, ingredientById, totalsInDefaultUnit);
     }
 
-    /**
-     * Transforma um RecipeIngredient em um item consolidável na unidade padrão.
-     * Retorna null se não houver dados suficientes.
-     */
     private ResolvedItem resolveItemInDefaultUnit(RecipeIngredient ri) {
         if (ri == null || ri.getIngredient() == null) return null;
 
@@ -122,7 +159,6 @@ public class ShoppingListServiceImpl implements ShoppingListService {
 
         Double qtyDefault = ri.getQuantityInDefaultUnit();
         if (qtyDefault == null) {
-            // fallback: se vier nulo (dados antigos), tenta usar quantity se já estiver em defaultUnit
             if (ri.getUnitUsed() != null
                     && ri.getUnitUsed().getId() != null
                     && ri.getUnitUsed().getId().equals(defaultUnit.getId())
