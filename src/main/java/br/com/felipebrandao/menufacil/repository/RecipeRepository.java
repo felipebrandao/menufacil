@@ -17,8 +17,18 @@ public interface RecipeRepository extends MongoRepository<Recipe, String> {
     @Query("""
         {
           $and: [
-            { "name": { $regex: ?0, $options: 'i' } },
-            { "category": { $regex: ?1, $options: 'i' } }
+            {
+              $or: [
+                { ?0: '' },
+                { "name": { $regex: ?0, $options: 'i' } }
+              ]
+            },
+            {
+              $or: [
+                { ?1: '' },
+                { "category.name": { $regex: ?1, $options: 'i' } }
+              ]
+            }
           ]
         }
         """)

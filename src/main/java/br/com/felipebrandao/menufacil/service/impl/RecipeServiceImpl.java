@@ -25,7 +25,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,6 @@ public class RecipeServiceImpl implements RecipeService {
     private final UnitTypeRepository unitTypeRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
 
-    @Transactional
     public RecipeResponse create(CreateRecipeRequest request) {
 
         RecipeCategory category = recipeCategoryRepository.findById(request.getCategoryId())
@@ -93,10 +91,33 @@ public class RecipeServiceImpl implements RecipeService {
         recipe.setMainImage(mainImage);
         recipe.setGallery(gallery);
         recipe.setTotalTime(totalTime);
-        recipe.setHighlighted(highlighted != null ? highlighted : false);
+        recipe.setHighlighted(highlighted != null && highlighted);
     }
 
     private List<RecipeIngredient> mapIngredients(List<RecipeIngredientRequest> requests) {
+
+        if (requests == null || requests.isEmpty()) {
+            throw new IllegalArgumentException("A receita deve ter pelo menos um ingrediente.");
+        }
+
+        for (int i = 0; i < requests.size(); i++) {
+            RecipeIngredientRequest req = requests.get(i);
+            if (req == null) {
+                throw new IllegalArgumentException("Ingrediente da receita inválido na posição " + i);
+            }
+            if (req.getIngredientId() == null || req.getIngredientId().isBlank()) {
+                throw new IllegalArgumentException("ingredientId é obrigatório (posição " + i + ")");
+            }
+            if (req.getUnitUsedId() == null || req.getUnitUsedId().isBlank()) {
+                throw new IllegalArgumentException("unitUsedId é obrigatório (posição " + i + ")");
+            }
+            if (req.getQuantity() == null) {
+                throw new IllegalArgumentException("quantity é obrigatório (posição " + i + ")");
+            }
+            if (req.getQuantity() <= 0.0d) {
+                throw new IllegalArgumentException("quantity deve ser maior que 0 (posição " + i + ")");
+            }
+        }
 
         Set<String> ingredientIds = requests.stream()
                 .map(RecipeIngredientRequest::getIngredientId)
@@ -106,12 +127,10 @@ public class RecipeServiceImpl implements RecipeService {
                 .map(RecipeIngredientRequest::getUnitUsedId)
                 .collect(Collectors.toSet());
 
-        Iterable<Ingredient> foundIngredientsIter = ingredientRepository.findAllById(ingredientIds);
-        List<Ingredient> foundIngredients = StreamSupport.stream(foundIngredientsIter.spliterator(), false)
+        List<Ingredient> foundIngredients = StreamSupport.stream(ingredientRepository.findAllById(ingredientIds).spliterator(), false)
                 .toList();
 
-        Iterable<UnitType> foundUnitsIter = unitTypeRepository.findAllById(unitIds);
-        List<UnitType> foundUnits = StreamSupport.stream(foundUnitsIter.spliterator(), false)
+        List<UnitType> foundUnits = StreamSupport.stream(unitTypeRepository.findAllById(unitIds).spliterator(), false)
                 .toList();
 
         Map<String, Ingredient> ingredientMap = foundIngredients.stream()
@@ -135,35 +154,40 @@ public class RecipeServiceImpl implements RecipeService {
                 .map(req -> {
                     Ingredient ingredient = ingredientMap.get(req.getIngredientId());
                     UnitType unitUsed = unitMap.get(req.getUnitUsedId());
-                    double quantityInDefaultUnit = convertToDefaultUnit(
-                            ingredient,
-                            unitUsed,
-                            req.getQuantity()
-                    );
+
+                    validateConversionExists(ingredient, unitUsed);
+
                     return RecipeIngredient.builder()
-                            .ingredient(ingredient)
-                            .unitUsed(unitUsed)
+                            .ingredientId(ingredient.getId())
+                            .unitUsedId(unitUsed.getId())
                             .quantity(req.getQuantity())
-                            .defaultUnit(ingredient.getDefaultUnit())
-                            .quantityInDefaultUnit(quantityInDefaultUnit)
                             .build();
                 })
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    private double convertToDefaultUnit(Ingredient ingredient, UnitType usedUnit, double qty) {
-
-        if (ingredient.getDefaultUnit().getId().equals(usedUnit.getId())) {
-            return qty;
+    private void validateConversionExists(Ingredient ingredient, UnitType usedUnit) {
+        if (ingredient == null || ingredient.getDefaultUnit() == null || ingredient.getDefaultUnit().getId() == null) {
+            throw new IllegalArgumentException("Ingrediente sem unidade padrão");
+        }
+        if (usedUnit == null || usedUnit.getId() == null) {
+            throw new IllegalArgumentException("Unidade usada inválida");
         }
 
-        return ingredient.getConversions().stream()
-                .filter(c -> c.getToUnit().getId().equals(usedUnit.getId()))
-                .findFirst()
-                .map(c -> qty * c.getFactor())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Não existe conversão de " + usedUnit.getName() + " para " + ingredient.getDefaultUnit().getName()
-                ));
+        if (ingredient.getDefaultUnit().getId().equals(usedUnit.getId())) {
+            return;
+        }
+
+        boolean hasConversion = ingredient.getConversions() != null && ingredient.getConversions().stream()
+                .anyMatch(c -> c != null
+                        && c.getToUnit() != null
+                        && usedUnit.getId().equals(c.getToUnit().getId()));
+
+        if (!hasConversion) {
+            throw new IllegalArgumentException(
+                    "Não existe conversão de " + ingredient.getDefaultUnit().getName() + " para " + usedUnit.getName()
+            );
+        }
     }
 
     public RecipeResponse getById(String id) {
@@ -186,42 +210,7 @@ public class RecipeServiceImpl implements RecipeService {
         recipeRepository.deleteById(id);
     }
 
-    private RecipeResponse mapRecipeResponse(Recipe recipe) {
-        return RecipeResponse.builder()
-                .id(recipe.getId())
-                .name(recipe.getName())
-                .category(
-                        RecipeCategoryResponse.builder()
-                                .id(recipe.getCategory().getId())
-                                .name(recipe.getCategory().getName())
-                                .build()
-                )
-                .ingredients(
-                        recipe.getIngredients().stream()
-                                .map(ri -> RecipeIngredientResponse.builder()
-                                        .ingredientId(ri.getIngredient().getId())
-                                        .ingredientName(ri.getIngredient().getName())
-                                        .unitUsedId(ri.getUnitUsed().getId())
-                                        .unitUsedName(ri.getUnitUsed().getName())
-                                        .unitUsedAbbreviation(ri.getUnitUsed().getAbbreviation())
-                                        .quantity(ri.getQuantity())
-                                        .defaultUnit(ri.getDefaultUnit().getName())
-                                        .quantityInDefaultUnit(ri.getQuantityInDefaultUnit())
-                                        .build()
-                                )
-                                .toList()
-                )
-                .instructions(recipe.getInstructions())
-                .mainImage(recipe.getMainImage())
-                .gallery(recipe.getGallery())
-                .totalTime(recipe.getTotalTime())
-                .highlighted(recipe.getHighlighted())
-                .createdAt(recipe.getCreatedAt())
-                .updatedAt(recipe.getUpdatedAt())
-                .build();
-    }
-
-    @Transactional
+    @Override
     public RecipeResponse update(String id, UpdateRecipeRequest request) {
 
         Recipe recipe = recipeRepository.findById(id)
@@ -283,6 +272,68 @@ public class RecipeServiceImpl implements RecipeService {
         response.setPagination(pagination);
 
         return response;
+    }
+
+    private RecipeResponse mapRecipeResponse(Recipe recipe) {
+        List<RecipeIngredient> ris = recipe.getIngredients() != null ? recipe.getIngredients() : List.of();
+
+        Set<String> ingredientIds = ris.stream()
+                .map(RecipeIngredient::getIngredientId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+
+        Set<String> unitIds = ris.stream()
+                .map(RecipeIngredient::getUnitUsedId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+
+        Map<String, Ingredient> ingredientMap = ingredientIds.isEmpty()
+                ? Map.of()
+                : StreamSupport.stream(ingredientRepository.findAllById(ingredientIds).spliterator(), false)
+                .collect(Collectors.toMap(Ingredient::getId, i -> i));
+
+        Map<String, UnitType> unitMap = unitIds.isEmpty()
+                ? Map.of()
+                : StreamSupport.stream(unitTypeRepository.findAllById(unitIds).spliterator(), false)
+                .collect(Collectors.toMap(UnitType::getId, u -> u));
+
+        return RecipeResponse.builder()
+                .id(recipe.getId())
+                .name(recipe.getName())
+                .category(
+                        RecipeCategoryResponse.builder()
+                                .id(recipe.getCategory().getId())
+                                .name(recipe.getCategory().getName())
+                                .build()
+                )
+                .ingredients(
+                        ris.stream()
+                                .map(ri -> {
+                                    String ingId = ri.getIngredientId();
+                                    String unitId = ri.getUnitUsedId();
+
+                                    Ingredient ing = ingId != null ? ingredientMap.get(ingId) : null;
+                                    UnitType unit = unitId != null ? unitMap.get(unitId) : null;
+
+                                    return RecipeIngredientResponse.builder()
+                                            .ingredientId(ingId)
+                                            .ingredientName(ing != null ? ing.getName() : null)
+                                            .unitUsedId(unitId)
+                                            .unitUsedName(unit != null ? unit.getName() : null)
+                                            .unitUsedAbbreviation(unit != null ? unit.getAbbreviation() : null)
+                                            .quantity(ri.getQuantity())
+                                            .build();
+                                })
+                                .toList()
+                )
+                .instructions(recipe.getInstructions())
+                .mainImage(recipe.getMainImage())
+                .gallery(recipe.getGallery())
+                .totalTime(recipe.getTotalTime())
+                .highlighted(recipe.getHighlighted())
+                .createdAt(recipe.getCreatedAt())
+                .updatedAt(recipe.getUpdatedAt())
+                .build();
     }
 
     private RecipeSummaryResponse toSummary(Recipe r) {

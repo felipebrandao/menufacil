@@ -67,6 +67,13 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- MongoDB embedded para testes (@DataMongoTest) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb-embedded</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

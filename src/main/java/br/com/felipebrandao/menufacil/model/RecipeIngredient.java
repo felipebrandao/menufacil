@@ -1,5 +1,6 @@
 package br.com.felipebrandao.menufacil.model;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,16 +13,12 @@ import lombok.NoArgsConstructor;
 @Builder
 public class RecipeIngredient {
 
-    @NotNull
-    Ingredient ingredient;
+    @NotBlank
+    private String ingredientId;
+
+    @NotBlank
+    private String unitUsedId;
 
     @NotNull
-    UnitType unitUsed;
-
-    @NotNull
-    Double quantity;
-
-    UnitType defaultUnit;
-
-    Double quantityInDefaultUnit;
+    private Double quantity;
 }

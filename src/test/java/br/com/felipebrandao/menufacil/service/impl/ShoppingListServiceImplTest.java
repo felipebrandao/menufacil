@@ -3,8 +3,10 @@ package br.com.felipebrandao.menufacil.service.impl;
 import br.com.felipebrandao.menufacil.model.Recipe;
 import br.com.felipebrandao.menufacil.model.ScheduleDay;
 import br.com.felipebrandao.menufacil.model.ScheduledRecipe;
+import br.com.felipebrandao.menufacil.repository.IngredientRepository;
 import br.com.felipebrandao.menufacil.repository.RecipeRepository;
 import br.com.felipebrandao.menufacil.repository.ScheduleRepository;
+import br.com.felipebrandao.menufacil.repository.UnitTypeRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -28,10 +30,12 @@ class ShoppingListServiceImplTest {
     void generate_weekly_shouldIgnoreDaysBeforeToday_whenStartIsInPast() {
         ScheduleRepository scheduleRepository = mock(ScheduleRepository.class);
         RecipeRepository recipeRepository = mock(RecipeRepository.class);
+        IngredientRepository ingredientRepository = mock(IngredientRepository.class);
+        UnitTypeRepository unitTypeRepository = mock(UnitTypeRepository.class);
 
         Clock clock = Clock.fixed(Instant.parse("2026-01-14T10:00:00Z"), ZoneId.of("UTC"));
 
-        ShoppingListServiceImpl service = new ShoppingListServiceImpl(scheduleRepository, recipeRepository, clock);
+        ShoppingListServiceImpl service = new ShoppingListServiceImpl(scheduleRepository, recipeRepository, ingredientRepository, unitTypeRepository, clock);
 
         LocalDate start = LocalDate.of(2026, 1, 11);
 
@@ -53,10 +57,12 @@ class ShoppingListServiceImplTest {
     void generate_weekly_shouldReturnEmptyWithoutQuery_whenWholeRangeIsPast() {
         ScheduleRepository scheduleRepository = mock(ScheduleRepository.class);
         RecipeRepository recipeRepository = mock(RecipeRepository.class);
+        IngredientRepository ingredientRepository = mock(IngredientRepository.class);
+        UnitTypeRepository unitTypeRepository = mock(UnitTypeRepository.class);
 
         Clock clock = Clock.fixed(Instant.parse("2026-01-20T10:00:00Z"), ZoneId.of("UTC"));
 
-        ShoppingListServiceImpl service = new ShoppingListServiceImpl(scheduleRepository, recipeRepository, clock);
+        ShoppingListServiceImpl service = new ShoppingListServiceImpl(scheduleRepository, recipeRepository, ingredientRepository, unitTypeRepository, clock);
 
         LocalDate start = LocalDate.of(2026, 1, 11);
 
@@ -73,10 +79,12 @@ class ShoppingListServiceImplTest {
     void generate_weekly_shouldReturnRecipesWithOccurrences_onlyFromEffectiveStart() {
         ScheduleRepository scheduleRepository = mock(ScheduleRepository.class);
         RecipeRepository recipeRepository = mock(RecipeRepository.class);
+        IngredientRepository ingredientRepository = mock(IngredientRepository.class);
+        UnitTypeRepository unitTypeRepository = mock(UnitTypeRepository.class);
 
         Clock clock = Clock.fixed(Instant.parse("2026-01-14T10:00:00Z"), ZoneId.of("UTC"));
 
-        ShoppingListServiceImpl service = new ShoppingListServiceImpl(scheduleRepository, recipeRepository, clock);
+        ShoppingListServiceImpl service = new ShoppingListServiceImpl(scheduleRepository, recipeRepository, ingredientRepository, unitTypeRepository, clock);
 
         LocalDate start = LocalDate.of(2026, 1, 11);
 

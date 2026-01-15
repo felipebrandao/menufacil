@@ -14,7 +14,4 @@ public class RecipeIngredientResponse {
     private String unitUsedName;
     private String unitUsedAbbreviation;
     private Double quantity;
-
-    private String defaultUnit;
-    private Double quantityInDefaultUnit;
 }

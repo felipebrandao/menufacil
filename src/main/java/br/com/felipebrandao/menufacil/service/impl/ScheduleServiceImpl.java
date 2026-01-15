@@ -14,7 +14,6 @@ import br.com.felipebrandao.menufacil.repository.ScheduleRepository;
 import br.com.felipebrandao.menufacil.service.ScheduleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -120,7 +119,6 @@ public class ScheduleServiceImpl  implements ScheduleService {
         return dr;
     }
 
-    @Transactional
     @Override
     public ScheduledRecipeResponse addRecipe(LocalDate date, CreateScheduleRecipeRequest req) {
         ScheduleDay day = scheduleRepository.findByDate(date)
@@ -152,7 +150,6 @@ public class ScheduleServiceImpl  implements ScheduleService {
         return toScheduledResponse(item, recipe);
     }
 
-    @Transactional
     @Override
     public void reorder(LocalDate date, ReorderRequest req) {
         ScheduleDay day = scheduleRepository.findByDate(date)
@@ -172,7 +169,6 @@ public class ScheduleServiceImpl  implements ScheduleService {
         scheduleRepository.save(day);
     }
 
-    @Transactional
     @Override
     public void deleteScheduledRecipe(String scheduledId) {
         List<ScheduleDay> allDays = scheduleRepository.findAll();

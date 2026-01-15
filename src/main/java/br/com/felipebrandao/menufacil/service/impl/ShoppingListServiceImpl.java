@@ -11,13 +11,17 @@ import br.com.felipebrandao.menufacil.model.RecipeIngredient;
 import br.com.felipebrandao.menufacil.model.ScheduleDay;
 import br.com.felipebrandao.menufacil.model.ScheduledRecipe;
 import br.com.felipebrandao.menufacil.model.UnitType;
+import br.com.felipebrandao.menufacil.repository.IngredientRepository;
 import br.com.felipebrandao.menufacil.repository.RecipeRepository;
 import br.com.felipebrandao.menufacil.repository.ScheduleRepository;
+import br.com.felipebrandao.menufacil.repository.UnitTypeRepository;
 import br.com.felipebrandao.menufacil.service.ShoppingListService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -36,12 +40,22 @@ public class ShoppingListServiceImpl implements ShoppingListService {
 
     private final ScheduleRepository scheduleRepository;
     private final RecipeRepository recipeRepository;
+    private final IngredientRepository ingredientRepository;
+    private final UnitTypeRepository unitTypeRepository;
     private final Clock clock;
 
     @Autowired
-    public ShoppingListServiceImpl(ScheduleRepository scheduleRepository, RecipeRepository recipeRepository, Clock clock) {
+    public ShoppingListServiceImpl(
+            ScheduleRepository scheduleRepository,
+            RecipeRepository recipeRepository,
+            IngredientRepository ingredientRepository,
+            UnitTypeRepository unitTypeRepository,
+            Clock clock
+    ) {
         this.scheduleRepository = scheduleRepository;
         this.recipeRepository = recipeRepository;
+        this.ingredientRepository = ingredientRepository;
+        this.unitTypeRepository = unitTypeRepository;
         this.clock = clock;
     }
 
@@ -56,12 +70,14 @@ public class ShoppingListServiceImpl implements ShoppingListService {
                 ? Collections.emptyList()
                 : scheduleRepository.findByDateRange(effectiveStart, requestedRange.end());
 
-        Map<String, Integer> recipeOccurrences = extractRecipeOccurrences(days);
+        Map<String, Integer> recipeOccurrences = extractRecipeOccurrences(days != null ? days : Collections.emptyList());
         Set<String> recipeIds = recipeOccurrences.keySet();
 
         List<Recipe> recipes = recipeIds.isEmpty()
                 ? Collections.emptyList()
                 : recipeRepository.findAllById(recipeIds);
+
+        if (recipes == null) recipes = Collections.emptyList();
 
         Aggregation aggregation = aggregateInDefaultUnit(recipes);
         List<ShoppingListCategoryResponse> categories = toCategoryResponses(aggregation);
@@ -126,50 +142,110 @@ public class ShoppingListServiceImpl implements ShoppingListService {
     private Aggregation aggregateInDefaultUnit(List<Recipe> recipes) {
         Map<String, CategoryIngredient> categoryById = new HashMap<>();
         Map<String, Ingredient> ingredientById = new HashMap<>();
+        Map<String, UnitType> unitById = new HashMap<>();
         Map<Key, Double> totalsInDefaultUnit = new HashMap<>();
+
+        if (recipes == null || recipes.isEmpty()) {
+            return new Aggregation(categoryById, ingredientById, unitById, totalsInDefaultUnit);
+        }
+
+        Set<String> ingredientIds = recipes.stream()
+                .filter(Objects::nonNull)
+                .flatMap(r -> r.getIngredients() == null ? java.util.stream.Stream.empty() : r.getIngredients().stream())
+                .map(RecipeIngredient::getIngredientId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+
+        if (!ingredientIds.isEmpty() && ingredientRepository != null) {
+            for (Ingredient ing : ingredientRepository.findAllById(ingredientIds)) {
+                if (ing == null || ing.getId() == null) continue;
+                ingredientById.put(ing.getId(), ing);
+
+                if (ing.getCategory() != null && ing.getCategory().getId() != null) {
+                    categoryById.putIfAbsent(ing.getCategory().getId(), ing.getCategory());
+                }
+                if (ing.getDefaultUnit() != null && ing.getDefaultUnit().getId() != null) {
+                    unitById.putIfAbsent(ing.getDefaultUnit().getId(), ing.getDefaultUnit());
+                }
+            }
+        }
+
+        Set<String> unitUsedIds = recipes.stream()
+                .filter(Objects::nonNull)
+                .flatMap(r -> r.getIngredients() == null ? java.util.stream.Stream.empty() : r.getIngredients().stream())
+                .map(RecipeIngredient::getUnitUsedId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+
+        if (!unitUsedIds.isEmpty() && unitTypeRepository != null) {
+            for (UnitType u : unitTypeRepository.findAllById(unitUsedIds)) {
+                if (u != null && u.getId() != null) {
+                    unitById.putIfAbsent(u.getId(), u);
+                }
+            }
+        }
 
         for (Recipe recipe : recipes) {
             if (recipe == null || recipe.getIngredients() == null) continue;
 
             for (RecipeIngredient ri : recipe.getIngredients()) {
-                ResolvedItem item = resolveItemInDefaultUnit(ri);
-                if (item == null) continue;
+                if (ri == null) continue;
 
-                categoryById.putIfAbsent(item.category().getId(), item.category());
-                ingredientById.putIfAbsent(item.ingredient().getId(), item.ingredient());
+                String ingId = ri.getIngredientId();
+                if (ingId == null || ingId.isBlank()) continue;
 
-                totalsInDefaultUnit.merge(new Key(item.category().getId(), item.ingredient().getId()), item.qtyDefault(), Double::sum);
+                Ingredient ing = ingredientById.get(ingId);
+                if (ing == null || ing.getId() == null) continue;
+
+                CategoryIngredient cat = ing.getCategory();
+                if (cat == null || cat.getId() == null) continue;
+
+                UnitType defaultUnit = ing.getDefaultUnit();
+                if (defaultUnit == null || defaultUnit.getId() == null) continue;
+
+                String usedUnitId = ri.getUnitUsedId();
+                if (usedUnitId == null || usedUnitId.isBlank()) continue;
+
+                UnitType usedUnit = unitById.get(usedUnitId);
+                if (usedUnit == null || usedUnit.getId() == null) continue;
+
+                double qtyDefault;
+                try {
+                    qtyDefault = convertToDefaultUnit(ing, usedUnit, ri.getQuantity());
+                } catch (IllegalArgumentException ex) {
+                    continue;
+                }
+
+                totalsInDefaultUnit.merge(new Key(cat.getId(), ing.getId()), qtyDefault, Double::sum);
             }
         }
 
-        return new Aggregation(categoryById, ingredientById, totalsInDefaultUnit);
+        return new Aggregation(categoryById, ingredientById, unitById, totalsInDefaultUnit);
     }
 
-    private ResolvedItem resolveItemInDefaultUnit(RecipeIngredient ri) {
-        if (ri == null || ri.getIngredient() == null) return null;
-
-        Ingredient ing = ri.getIngredient();
-        if (ing.getId() == null) return null;
-
-        CategoryIngredient cat = ing.getCategory();
-        if (cat == null || cat.getId() == null) return null;
-
-        UnitType defaultUnit = ing.getDefaultUnit();
-        if (defaultUnit == null || defaultUnit.getId() == null) return null;
-
-        Double qtyDefault = ri.getQuantityInDefaultUnit();
-        if (qtyDefault == null) {
-            if (ri.getUnitUsed() != null
-                    && ri.getUnitUsed().getId() != null
-                    && ri.getUnitUsed().getId().equals(defaultUnit.getId())
-                    && ri.getQuantity() != null) {
-                qtyDefault = ri.getQuantity();
-            } else {
-                return null;
-            }
+    private double convertToDefaultUnit(Ingredient ingredient, UnitType usedUnit, double qty) {
+        if (ingredient == null || ingredient.getDefaultUnit() == null || ingredient.getDefaultUnit().getId() == null) {
+            throw new IllegalArgumentException("Ingrediente sem unidade padrão");
         }
 
-        return new ResolvedItem(cat, ing, defaultUnit, qtyDefault);
+        if (usedUnit == null || usedUnit.getId() == null) {
+            throw new IllegalArgumentException("Unidade usada inválida");
+        }
+
+        if (ingredient.getDefaultUnit().getId().equals(usedUnit.getId())) {
+            return qty;
+        }
+
+        return ingredient.getConversions().stream()
+                .filter(c -> c != null
+                        && c.getToUnit() != null
+                        && c.getToUnit().getId() != null
+                        && c.getToUnit().getId().equals(usedUnit.getId()))
+                .findFirst()
+                .map(c -> qty * c.getFactor())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Não existe conversão de " + usedUnit.getName() + " para " + ingredient.getDefaultUnit().getName()
+                ));
     }
 
     private List<ShoppingListCategoryResponse> toCategoryResponses(Aggregation aggregation) {
@@ -186,10 +262,17 @@ public class ShoppingListServiceImpl implements ShoppingListService {
             catResp.getItems().add(toItemResponse(key, ing, qty));
         }
 
-        return categoryRespMap.values().stream()
+        List<ShoppingListCategoryResponse> result = categoryRespMap.values().stream()
                 .sorted(Comparator.comparing(c -> c.getCategoryName() == null ? "" : c.getCategoryName(), String.CASE_INSENSITIVE_ORDER))
-                .peek(c -> c.getItems().sort(Comparator.comparing(i -> i.getIngredientName() == null ? "" : i.getIngredientName(), String.CASE_INSENSITIVE_ORDER)))
                 .toList();
+
+        for (ShoppingListCategoryResponse c : result) {
+            if (c.getItems() != null) {
+                c.getItems().sort(Comparator.comparing(i -> i.getIngredientName() == null ? "" : i.getIngredientName(), String.CASE_INSENSITIVE_ORDER));
+            }
+        }
+
+        return result;
     }
 
     private ShoppingListCategoryResponse newCategoryResponse(String categoryId, CategoryIngredient cat) {
@@ -205,22 +288,30 @@ public class ShoppingListServiceImpl implements ShoppingListService {
         ShoppingListItemResponse item = new ShoppingListItemResponse();
         item.setIngredientId(key.ingredientId());
         item.setIngredientName(ing != null ? ing.getName() : null);
-        item.setQuantity(qty);
+        item.setQuantity(roundQuantity(qty));
         item.setUnitId(defaultUnit != null ? defaultUnit.getId() : null);
         item.setUnitName(defaultUnit != null ? defaultUnit.getName() : null);
         item.setUnitAbbreviation(defaultUnit != null ? defaultUnit.getAbbreviation() : null);
         return item;
     }
 
+    private Double roundQuantity(Double value) {
+        if (value == null) return null;
+
+        return BigDecimal.valueOf(value)
+                .setScale(3, RoundingMode.HALF_UP)
+                .stripTrailingZeros()
+                .doubleValue();
+    }
+
     private record DateRange(LocalDate start, LocalDate end) {}
 
     private record Key(String categoryId, String ingredientId) {}
 
-    private record ResolvedItem(CategoryIngredient category, Ingredient ingredient, UnitType defaultUnit, double qtyDefault) {}
-
     private record Aggregation(
             Map<String, CategoryIngredient> categoryById,
             Map<String, Ingredient> ingredientById,
+            Map<String, UnitType> unitById,
             Map<Key, Double> totalsInDefaultUnit
     ) {}
 }
