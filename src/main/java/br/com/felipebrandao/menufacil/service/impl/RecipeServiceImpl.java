@@ -237,18 +237,18 @@ public class RecipeServiceImpl implements RecipeService {
     }
 
     @Override
-    public RecipeListResponse listRecipes(String query, String category, int page, int limit) {
+    public RecipeListResponse listRecipes(String query, String categoryId, int page, int limit) {
         Pageable pageable = PageRequest.of(page - 1, limit, Sort.by("createdAt").descending());
 
         boolean hasQuery = query != null && !query.isBlank();
-        boolean hasCategory = category != null && !category.isBlank();
+        boolean hasCategoryId = categoryId != null && !categoryId.isBlank();
 
         Page<Recipe> result;
 
-        if (hasQuery || hasCategory) {
+        if (hasQuery || hasCategoryId) {
             result = recipeRepository.search(
                     hasQuery ? query : "",
-                    hasCategory ? category : "",
+                    hasCategoryId ? categoryId : "",
                     pageable
             );
         } else {

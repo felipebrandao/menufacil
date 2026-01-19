@@ -119,7 +119,7 @@ Base path: `/api`
 - `GET /api/recipes` — lista receitas (paginado)
   - Query params:
     - `query` (opcional)
-    - `category` (opcional)
+    - `categoryId` (opcional) — filtra pelo **id** da categoria
     - `page` (padrão: 1)
     - `limit` (padrão: 8)
 

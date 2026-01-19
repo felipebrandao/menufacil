@@ -26,12 +26,12 @@ public interface RecipeRepository extends MongoRepository<Recipe, String> {
             {
               $or: [
                 { ?1: '' },
-                { "category.name": { $regex: ?1, $options: 'i' } }
+                { "category.id": ?1 }
               ]
             }
           ]
         }
         """)
-    Page<Recipe> search(String query, String category, Pageable pageable);
+    Page<Recipe> search(String query, String categoryId, Pageable pageable);
 
 }

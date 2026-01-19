@@ -15,5 +15,5 @@ public interface RecipeService {
     void delete(String id);
     RecipeResponse update(String id, UpdateRecipeRequest request);
 
-    RecipeListResponse listRecipes(String query, String category, int page, int limit);
+    RecipeListResponse listRecipes(String query, String categoryId, int page, int limit);
 }

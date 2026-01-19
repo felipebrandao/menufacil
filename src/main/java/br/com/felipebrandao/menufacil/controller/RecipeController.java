@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/recipes")
@@ -37,11 +36,11 @@ public class RecipeController {
     @GetMapping
     public ResponseEntity<RecipeListResponse> list(
             @RequestParam(required = false) String query,
-            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String categoryId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "8") int limit
     ) {
-        RecipeListResponse response = recipeService.listRecipes(query, category, page, limit);
+        RecipeListResponse response = recipeService.listRecipes(query, categoryId, page, limit);
         return ResponseEntity.ok(response);
     }
 
