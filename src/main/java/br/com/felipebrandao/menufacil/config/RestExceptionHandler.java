@@ -25,6 +25,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArg(IllegalArgumentException ex, HttpServletRequest request) {
+        log.warn("Bad request for {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(base("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST, request));
     }
@@ -64,6 +65,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        log.warn("Constraint violation for {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
         List<ApiErrorResponse.FieldError> fields = ex.getConstraintViolations().stream()
                 .map(v -> ApiErrorResponse.FieldError.builder()
                         .field(String.valueOf(v.getPropertyPath()))

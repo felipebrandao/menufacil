@@ -19,13 +19,13 @@ public interface RecipeRepository extends MongoRepository<Recipe, String> {
           $and: [
             {
               $or: [
-                { ?0: '' },
+                { $expr: { $eq: [ ?0, '' ] } },
                 { "name": { $regex: ?0, $options: 'i' } }
               ]
             },
             {
               $or: [
-                { ?1: '' },
+                { $expr: { $eq: [ ?1, '' ] } },
                 { "category.id": ?1 }
               ]
             }
