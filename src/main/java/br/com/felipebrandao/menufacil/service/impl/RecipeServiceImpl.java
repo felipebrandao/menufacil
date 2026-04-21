@@ -53,7 +53,9 @@ public class RecipeServiceImpl implements RecipeService {
                 .ingredients(List.of())
                 .instructions(request.getInstructions())
                 .mainImage(request.getMainImage())
+                .mainImagePublicId(request.getMainImagePublicId())
                 .gallery(request.getGallery())
+                .galleryPublicIds(request.getGalleryPublicIds())
                 .build();
 
         populateRecipeFromDto(recipe,
@@ -62,7 +64,9 @@ public class RecipeServiceImpl implements RecipeService {
                 request.getIngredients(),
                 request.getInstructions(),
                 request.getMainImage(),
+                request.getMainImagePublicId(),
                 request.getGallery(),
+                request.getGalleryPublicIds(),
                 request.getTotalTime(),
                 request.getHighlighted());
 
@@ -78,7 +82,9 @@ public class RecipeServiceImpl implements RecipeService {
             List<RecipeIngredientRequest> ingredientRequests,
             List<String> instructions,
             String mainImage,
+            String mainImagePublicId,
             List<String> gallery,
+            List<String> galleryPublicIds,
             Integer totalTime,
             Boolean highlighted
     ) {
@@ -89,7 +95,9 @@ public class RecipeServiceImpl implements RecipeService {
         recipe.setIngredients(mappedIngredients);
         recipe.setInstructions(instructions);
         recipe.setMainImage(mainImage);
+        recipe.setMainImagePublicId(mainImagePublicId);
         recipe.setGallery(gallery);
+        recipe.setGalleryPublicIds(galleryPublicIds);
         recipe.setTotalTime(totalTime);
         recipe.setHighlighted(highlighted != null && highlighted);
     }
@@ -226,7 +234,9 @@ public class RecipeServiceImpl implements RecipeService {
                 request.getIngredients(),
                 request.getInstructions(),
                 request.getMainImage(),
+                request.getMainImagePublicId(),
                 request.getGallery(),
+                request.getGalleryPublicIds(),
                 request.getTotalTime(),
                 request.getHighlighted()
         );
@@ -328,7 +338,9 @@ public class RecipeServiceImpl implements RecipeService {
                 )
                 .instructions(recipe.getInstructions())
                 .mainImage(recipe.getMainImage())
+                .mainImagePublicId(recipe.getMainImagePublicId())
                 .gallery(recipe.getGallery())
+                .galleryPublicIds(recipe.getGalleryPublicIds())
                 .totalTime(recipe.getTotalTime())
                 .highlighted(recipe.getHighlighted())
                 .createdAt(recipe.getCreatedAt())

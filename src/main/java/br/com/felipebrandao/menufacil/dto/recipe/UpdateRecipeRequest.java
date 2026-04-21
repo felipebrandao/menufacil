@@ -22,7 +22,11 @@ public class UpdateRecipeRequest {
 
     private String mainImage;
 
+    private String mainImagePublicId;
+
     private List<String> gallery;
+
+    private List<String> galleryPublicIds;
 
     private Integer totalTime;
 
