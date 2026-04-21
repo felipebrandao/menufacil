@@ -26,6 +26,10 @@ Defina as variáveis de ambiente:
 
 - `MONGODB_URI` (**obrigatória**) — URI do MongoDB
 - `PORT` (opcional) — porta da aplicação (padrão: `8080`)
+- `CLOUDINARY_CLOUD_NAME` (obrigatória para upload de imagem)
+- `CLOUDINARY_API_KEY` (obrigatória para upload de imagem)
+- `CLOUDINARY_API_SECRET` (obrigatória para upload de imagem)
+- `CLOUDINARY_FOLDER` (opcional, padrão: `menufacil/recipes`)
 
 ### Observabilidade (Actuator)
 
@@ -126,6 +130,24 @@ Base path: `/api`
 - `GET /api/recipes/{id}` — busca por id
 - `PUT /api/recipes/{id}` — atualiza (`UpdateRecipeRequest`)
 - `DELETE /api/recipes/{id}` — remove
+
+### Upload de imagens
+
+`/api/uploads`
+
+- `POST /api/uploads/images` — upload único (`multipart/form-data` com `file` e `context` opcional)
+  - Retorna `201` com `UploadedImageResponse` (`secureUrl`, `publicId`, `width`, `height`, `bytes`, `format`)
+- `POST /api/uploads/images/batch` — upload em lote (`multipart/form-data` com `files` e `context` opcional)
+  - Retorna `201` com lista de `UploadedImageResponse`
+- `DELETE /api/uploads/images?publicId=...` — remove imagem por `publicId`
+  - Retorna `204`
+
+Erros comuns de upload:
+
+- `INVALID_IMAGE` (`400`) — arquivo ausente/vazio ou tipo não suportado
+- `UPLOAD_SIZE_EXCEEDED` (`413`) — arquivo acima do limite de upload
+- `IMAGE_UPLOAD_ERROR` (`502`) — falha no provedor de imagem
+- `IMAGE_DELETE_ERROR` (`502`) — falha ao remover no provedor
 
 ### Agenda (Schedule)
 

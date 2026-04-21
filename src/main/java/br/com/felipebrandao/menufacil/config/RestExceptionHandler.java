@@ -1,6 +1,9 @@
 package br.com.felipebrandao.menufacil.config;
 
 import br.com.felipebrandao.menufacil.dto.error.ApiErrorResponse;
+import br.com.felipebrandao.menufacil.expection.ImageDeleteException;
+import br.com.felipebrandao.menufacil.expection.ImageUploadException;
+import br.com.felipebrandao.menufacil.expection.InvalidImageException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -12,6 +15,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.List;
@@ -89,6 +93,32 @@ public class RestExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleNotReadable(HttpMessageNotReadableException ignored, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(base("MALFORMED_REQUEST", "Corpo da requisição inválido", HttpStatus.BAD_REQUEST, request));
+    }
+
+    @ExceptionHandler(InvalidImageException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidImage(InvalidImageException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(base("INVALID_IMAGE", ex.getMessage(), HttpStatus.BAD_REQUEST, request));
+    }
+
+    @ExceptionHandler(ImageUploadException.class)
+    public ResponseEntity<ApiErrorResponse> handleImageUpload(ImageUploadException ex, HttpServletRequest request) {
+        log.error("Upload provider error for {} {}", request.getMethod(), request.getRequestURI(), ex);
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(base("IMAGE_UPLOAD_ERROR", "Falha no provedor de imagens", HttpStatus.BAD_GATEWAY, request));
+    }
+
+    @ExceptionHandler(ImageDeleteException.class)
+    public ResponseEntity<ApiErrorResponse> handleImageDelete(ImageDeleteException ex, HttpServletRequest request) {
+        log.error("Delete provider error for {} {}", request.getMethod(), request.getRequestURI(), ex);
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(base("IMAGE_DELETE_ERROR", "Falha no provedor de imagens", HttpStatus.BAD_GATEWAY, request));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ignored, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(base("UPLOAD_SIZE_EXCEEDED", "Arquivo excede o tamanho máximo permitido", HttpStatus.PAYLOAD_TOO_LARGE, request));
     }
 
     @ExceptionHandler(Exception.class)
